@@ -30,7 +30,7 @@ import org.metalib.maven.extention.model.PomYaml;
 import lombok.SneakyThrows;
 import lombok.val;
 
-@Component( role = AbstractMavenLifecycleParticipant.class, hint = "Extension1")
+@Component( role = AbstractMavenLifecycleParticipant.class, hint = "PomBaseMavenExtension")
 public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
 
     static final String USER_HOME = "user.home";
@@ -61,6 +61,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
 
     @Override
     public void afterSessionStart(final MavenSession session) throws MavenExecutionException {
+        logger.info("pom-yml-maven-extension: session starting ...");
         val request = session.getProjectBuildingRequest();
         val pomYmlFile = new File(USER_DIR, POM_YML);
         val pomYml = loadPomYaml(pomYmlFile);
