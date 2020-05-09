@@ -5,28 +5,37 @@ import static java.lang.String.format;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.bridge.MavenRepositorySystem;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
+import org.metalib.maven.extention.git.GitConfig;
+import org.metalib.maven.extention.model.PomProfiles;
+import org.metalib.maven.extention.model.PomRepositoryInfo;
+import org.metalib.maven.extention.model.PomSession;
+import org.metalib.maven.extention.model.PomYaml;
+import org.metalib.maven.extention.model.YmlArtifactRepository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import org.metalib.maven.extention.git.GitConfig;
-import org.metalib.maven.extention.model.PomProfiles;
-import org.metalib.maven.extention.model.PomSession;
-import org.metalib.maven.extention.model.PomYaml;
 
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 
@@ -42,6 +51,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     static final String TRUE = "true";
     static final String EMPTY = "";
     static final String SLASH = "/";
+    static final String DEFAULT_REPOSITORY_LAYOUT_ID = "default";
 
     static final String POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY = "pom-yaml.scm.git.load-git-url";
     static final String POM_BASE_SCM_GIT_GIT_URL_PROPERTY = "pom-yaml.scm.git.git-url";
@@ -58,6 +68,9 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
 
     @Requirement
     Logger logger;
+
+    @Requirement
+    MavenRepositorySystem mavenRepositorySystem;
 
     @Override
     public void afterSessionStart(final MavenSession session) throws MavenExecutionException {
@@ -105,7 +118,36 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         updateUserProperties(session, pomSession);
         updateSystemProperties(session, pomSession);
         updateScmSection(session);
+
+        val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
+        if (null != repositories) {
+            updateRepositories(request, repositories);
+        }
     }
+
+    private void updateRepositories(@NonNull final ProjectBuildingRequest request,
+            final PomRepositoryInfo repositories) throws MavenExecutionException {
+        request.setRemoteRepositories(upsert(request.getRemoteRepositories(), repositories.getArtifacts()));
+        request.setPluginArtifactRepositories(upsert(request.getPluginArtifactRepositories(), repositories.getPlugins()));
+    }
+
+    List<ArtifactRepository> upsert(final List<ArtifactRepository> requestRepositories,
+            final List<YmlArtifactRepository> repositories) throws MavenExecutionException {
+        if (null == repositories) {
+            return Collections.emptyList();
+        }
+        val remoteRepositories = null == requestRepositories? new ArrayList<ArtifactRepository>() : requestRepositories;
+        for (val r : repositories) {
+            try {
+                remoteRepositories.add(mavenRepositorySystem.createArtifactRepository(r.getId(), r.getUrl(),
+                        DEFAULT_REPOSITORY_LAYOUT_ID, r.getSnapshots(), r.getReleases()));
+            } catch (Exception e) {
+                throw new MavenExecutionException("", e);
+            }
+        }
+        return remoteRepositories;
+    }
+
 
     @SneakyThrows
     private void updateScmSection(final MavenSession session) {
