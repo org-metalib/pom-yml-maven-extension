@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -115,9 +116,9 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             profileIds.addAll(inactiveProfiles);
             request.setInactiveProfileIds(Arrays.asList(profileIds.toArray(new String[0])));
         }
-        updateUserProperties(session, pomSession);
-        updateSystemProperties(session, pomSession);
-        updateScmSection(session);
+        updateUserProperties(request.getUserProperties(), pomSession);
+        updateSystemProperties(request.getSystemProperties(), pomSession);
+        updateScmSection(request.getUserProperties(), pomSession);
 
         val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
         if (null != repositories) {
@@ -148,11 +149,10 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         return remoteRepositories;
     }
 
-
     @SneakyThrows
-    private void updateScmSection(final MavenSession session) {
-        val userProperties = session.getUserProperties();
-        if (!TRUE.equals(userProperties.get(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY))) {
+    private void updateScmSection(final Properties userProperties, final PomSession pomSession) {
+        if (!(TRUE.equals(userProperties.get(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)) ||
+              TRUE.equals(Optional.of(pomSession).map(PomSession::getUserProperties).map(v -> v.getProperty(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)).orElse(null)))) {
             return;
         }
         val config = new GitConfig();
@@ -188,32 +188,32 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         return 0 < pathIndex? fullPath.substring(pathIndex+1) : fullPath;
     }
 
-    private void updateUserProperties(final MavenSession session, final PomSession pomSession) {
-        val userProperties = session.getUserProperties();
-        val userPropertyNames = userProperties.stringPropertyNames();
+    private void updateUserProperties(final Properties userProperties, final PomSession pomSession) {
         val pomUserProperties = pomSession.getUserProperties();
-        if (null != pomUserProperties) {
-            for (val name : pomUserProperties.stringPropertyNames()) {
-                if (userPropertyNames.contains(name)) {
-                    logger.info(format("User property <%s> has been set with <%s>", name, userProperties.getProperty(name)));
-                } else {
-                    userProperties.setProperty(name, pomUserProperties.getProperty(name));
-                }
+        if (null == pomUserProperties) {
+            return;
+        }
+        val userPropertyNames = userProperties.keySet();
+        for (val name : pomUserProperties.stringPropertyNames()) {
+            if (userPropertyNames.contains(name)) {
+                logger.info(format("User property <%s> has been set with <%s>", name, userProperties.get(name)));
+            } else {
+                userProperties.setProperty(name, pomUserProperties.getProperty(name));
             }
         }
     }
 
-    private void updateSystemProperties(final MavenSession session, final PomSession pomSession) {
-        val systemProperties = session.getSystemProperties();
-        val systemPropertyNames = systemProperties.stringPropertyNames();
+    private void updateSystemProperties(final Properties systemProperties, final PomSession pomSession) {
         val pomSystemProperties = pomSession.getSystemProperties();
-        if (null != pomSystemProperties) {
-            for (val name : pomSystemProperties.stringPropertyNames()) {
-                if (systemPropertyNames.contains(name)) {
-                    logger.info(format("System property <%s> has been set with <%s>", name, systemProperties.getProperty(name)));
-                } else {
-                    systemProperties.setProperty(name, pomSystemProperties.getProperty(name));
-                }
+        if (null == pomSystemProperties) {
+            return;
+        }
+        val systemPropertyNames = systemProperties.stringPropertyNames();
+        for (val name : pomSystemProperties.stringPropertyNames()) {
+            if (systemPropertyNames.contains(name)) {
+                logger.info(format("System property <%s> has been set with <%s>", name, systemProperties.getProperty(name)));
+            } else {
+                systemProperties.setProperty(name, pomSystemProperties.getProperty(name));
             }
         }
     }
@@ -226,9 +226,6 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         }
     }
 
-    /**
-     * @return default {@code ObjectMapper} instance to operate with yaml format
-     */
     public static ObjectMapper jacksonYaml() {
         return JACKSON_YAML.copy();
     }
