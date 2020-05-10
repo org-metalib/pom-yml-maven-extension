@@ -81,7 +81,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             logger.error("<pom.xml> file info has not been provided.");
             return;
         }
-        val pomYmlFile = new File(pomXmlFile, POM_YML);
+        val pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
         val pomYml = loadPomYaml(pomYmlFile);
         PomSession pomSession =  Optional.ofNullable(pomYml).map(PomYaml::getSession).orElse(null);
         if (null == pomSession) {
