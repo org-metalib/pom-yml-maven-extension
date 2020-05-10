@@ -19,6 +19,7 @@ import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.bridge.MavenRepositorySystem;
+import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
@@ -45,7 +46,6 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
 
     static final String USER_HOME = "user.home";
     static final String USER_HOME_PATH = System.getProperty(USER_HOME);
-    static final String USER_DIR = System.getProperty("user.dir");
     static final String POM_YML = "pom.yml";
 
     static final String TILDA = "~";
@@ -76,8 +76,12 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     @Override
     public void afterSessionStart(final MavenSession session) throws MavenExecutionException {
         logger.info("pom-yml-maven-extension: session starting ...");
-        val request = session.getProjectBuildingRequest();
-        val pomYmlFile = new File(USER_DIR, POM_YML);
+        val pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getPom).orElse(null);
+        if (null == pomXmlFile) {
+            logger.error("<pom.xml> file info has not been provided.");
+            return;
+        }
+        val pomYmlFile = new File(pomXmlFile, POM_YML);
         val pomYml = loadPomYaml(pomYmlFile);
         PomSession pomSession =  Optional.ofNullable(pomYml).map(PomYaml::getSession).orElse(null);
         if (null == pomSession) {
@@ -98,16 +102,29 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                 }
             }
         }
-        val inactiveProfileIds = new HashSet<>(request.getInactiveProfileIds());
+        val projectBuildingRequest = session.getProjectBuildingRequest();
+        updatePofileIds(projectBuildingRequest, pomSession);
+        updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
+        updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
+        updateScmGitProperties(projectBuildingRequest.getUserProperties(), pomSession);
+
+        val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
+        if (null != repositories) {
+            updateRepositories(projectBuildingRequest, repositories);
+        }
+    }
+    private void updatePofileIds(@NonNull final ProjectBuildingRequest request, final PomSession pomSession) throws MavenExecutionException {
         val activeProfileIds = new HashSet<>(request.getActiveProfileIds());
         val activeProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getActive).orElse(null);
         if (null != activeProfiles) {
+            val inactiveProfileIds = new HashSet<>(request.getInactiveProfileIds());
             val profileIds = activeProfiles.stream()
                     .filter(v -> !inactiveProfileIds.contains(v))
                     .collect(Collectors.toCollection(TreeSet::new));
             profileIds.addAll(activeProfileIds);
             request.setActiveProfileIds(Arrays.asList(profileIds.toArray(new String[0])));
         }
+
         val inactiveProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getInactive).orElse(null);
         if (null != inactiveProfiles) {
             val profileIds = inactiveProfiles.stream()
@@ -115,14 +132,6 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                     .collect(Collectors.toCollection(TreeSet::new));
             profileIds.addAll(inactiveProfiles);
             request.setInactiveProfileIds(Arrays.asList(profileIds.toArray(new String[0])));
-        }
-        updateUserProperties(request.getUserProperties(), pomSession);
-        updateSystemProperties(request.getSystemProperties(), pomSession);
-        updateScmSection(request.getUserProperties(), pomSession);
-
-        val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
-        if (null != repositories) {
-            updateRepositories(request, repositories);
         }
     }
 
@@ -150,7 +159,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     }
 
     @SneakyThrows
-    private void updateScmSection(final Properties userProperties, final PomSession pomSession) {
+    private void updateScmGitProperties(final Properties userProperties, final PomSession pomSession) {
         if (!(TRUE.equals(userProperties.get(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)) ||
               TRUE.equals(Optional.of(pomSession).map(PomSession::getUserProperties).map(v -> v.getProperty(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)).orElse(null)))) {
             return;
