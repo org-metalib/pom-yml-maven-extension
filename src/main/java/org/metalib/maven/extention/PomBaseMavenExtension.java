@@ -48,8 +48,11 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     static final String USER_HOME_PATH = System.getProperty(USER_HOME);
     static final String POM_YML = "pom.yml";
 
+    static final String DOT = ".";
     static final String TILDA = "~";
     static final String TRUE = "true";
+    static final String GIT = "git";
+    static final String DOT_GIT = DOT + GIT;
     static final String EMPTY = "";
     static final String SLASH = "/";
     static final String DEFAULT_REPOSITORY_LAYOUT_ID = "default";
@@ -106,7 +109,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         updatePofileIds(projectBuildingRequest, pomSession);
         updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
         updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
-        updateScmGitProperties(projectBuildingRequest.getUserProperties(), pomSession);
+        updateScmGitProperties(session, pomSession);
 
         val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
         if (null != repositories) {
@@ -159,12 +162,24 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     }
 
     @SneakyThrows
-    private void updateScmGitProperties(final Properties userProperties, final PomSession pomSession) {
+    private void updateScmGitProperties(final MavenSession session, final PomSession pomSession) {
+        val projectBuildingRequest = session.getProjectBuildingRequest();
+        if (null == projectBuildingRequest) {
+            return;
+        }
+        val userProperties = projectBuildingRequest.getUserProperties();
+        if (null == userProperties) {
+            return;
+        }
         if (!(TRUE.equals(userProperties.get(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)) ||
               TRUE.equals(Optional.of(pomSession).map(PomSession::getUserProperties).map(v -> v.getProperty(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)).orElse(null)))) {
             return;
         }
-        val config = new GitConfig();
+        val pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(v -> v.getPom()).orElse(null);
+        if (null == pomXmlFile) {
+            return;
+        }
+        val config = new GitConfig(new File(pomXmlFile.getParent(), DOT_GIT));
         if (!config.exists()) {
             return;
         }
@@ -178,8 +193,8 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             val name = extractNamePart(uri.getPath());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PATH_PROPERTY, path.startsWith(SLASH) ? path.substring(1) : path);
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_NAME_PROPERTY,
-                    name.endsWith(".git")? name.substring(0, name.length()-4) : name);
-            userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_EXT_PROPERTY, name.endsWith(".git")? "git" : EMPTY);
+                    name.endsWith(DOT_GIT)? name.substring(0, name.length()-4) : name);
+            userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_EXT_PROPERTY, name.endsWith(DOT_GIT)? GIT : EMPTY);
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_HOST_PROPERTY, uri.getHost());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_SCHEMA_PROPERTY, uri.getScheme());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PORT_PROPERTY, EMPTY + uri.getPort());

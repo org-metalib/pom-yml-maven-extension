@@ -6,24 +6,22 @@ import java.io.FileReader;
 import java.io.Reader;
 import java.nio.file.Paths;
 
+import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
 
 public class GitConfig {
 
-    static final String USER_DIR = System.getProperty("user.dir");
-    static final String DOT_GIT = ".git";
     static final String CONFIG = "config";
 
-    final File gitFile = Paths.get(USER_DIR, DOT_GIT, CONFIG).toFile();
+    final File gitFile;
+
+    public GitConfig(@NonNull File gitDir) {
+        gitFile = new File(gitDir, CONFIG);
+    }
 
     public boolean exists() {
         return gitFile.isFile();
-    }
-
-    @SneakyThrows
-    public Reader open() {
-        return new FileReader(gitFile);
     }
 
     @SneakyThrows
