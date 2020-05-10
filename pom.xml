@@ -4,7 +4,7 @@
 
     <groupId>org.metalib.maven.extention</groupId>
     <artifactId>pom-yml-maven-extension</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.6-SNAPSHOT</version>
 
     <name>${project.artifactId}</name>
     <description>pom.yml maven extension</description>
