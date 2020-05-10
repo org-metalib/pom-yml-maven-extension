@@ -30,7 +30,7 @@ Follow maven guidance to setup maven extension as described in [Maven Extension 
   To configure the extension, use `${maven.projectBasedir}/.mvn/extensions.xml` method.
 
 Example of `.mvn/extensions.xml` configuration file:
-```shell script
+```xml
 <extensions xmlns="http://maven.apache.org/EXTENSIONS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/EXTENSIONS/1.0.0 http://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
     <extension>
         <groupId>org.metalib.maven.extention</groupId>
