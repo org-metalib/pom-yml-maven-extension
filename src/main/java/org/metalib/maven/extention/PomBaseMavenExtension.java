@@ -26,6 +26,7 @@ import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
 import org.metalib.maven.extention.git.GitConfig;
+import org.metalib.maven.extention.model.PomGoals;
 import org.metalib.maven.extention.model.PomProfiles;
 import org.metalib.maven.extention.model.PomRepositoryInfo;
 import org.metalib.maven.extention.model.PomSession;
@@ -40,6 +41,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
+import sun.management.counter.Counter;
 
 @Component( role = AbstractMavenLifecycleParticipant.class, hint = "PomBaseMavenExtension")
 public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
@@ -115,7 +117,28 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null != repositories) {
             updateRepositories(projectBuildingRequest, repositories);
         }
+        val requestGoals = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getGoals).orElse(null);
+        val pomYmlGoals = Optional.of(pomYml).map(PomYaml::getSession).map(PomSession::getGoals).orElse(null);
+        updateGoals(requestGoals, pomYmlGoals);
     }
+
+    private void updateGoals(final List<String> targetGoals, final PomGoals extensionGoals) {
+        if (null == targetGoals || null == extensionGoals) {
+            return;
+        }
+        if (null != extensionGoals.getBefore()) {
+            val counter = new Counter();
+            extensionGoals.getBefore().forEach(goal -> targetGoals.add(counter.value++, goal));
+        }
+        if (null != extensionGoals.getAfter()) {
+            targetGoals.addAll(extensionGoals.getAfter());
+        }
+    }
+
+    static class Counter {
+        int value;
+    }
+
     private void updatePofileIds(@NonNull final ProjectBuildingRequest request, final PomSession pomSession) throws MavenExecutionException {
         val activeProfileIds = new HashSet<>(request.getActiveProfileIds());
         val activeProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getActive).orElse(null);

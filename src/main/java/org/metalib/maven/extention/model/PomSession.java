@@ -8,9 +8,10 @@ import lombok.Data;
 
 @Data
 public class PomSession {
-    PomProfiles profiles;
+    private PomGoals goals;
+    private PomProfiles profiles;
     @JsonProperty("user-properties")
-    Properties userProperties;
+    private Properties userProperties;
     @JsonProperty("system-properties")
-    Properties systemProperties;
+    private Properties systemProperties;
 }

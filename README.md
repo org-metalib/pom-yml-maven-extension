@@ -2,9 +2,35 @@
 
 ## `pom.yml`
 `pom-yaml-maven-extension` introduces `pom.yml` configuration that accompanies `pom.xml`. The configuration is yet another way to replace what you can achieve using maven command line parameters.
+1. Maven goals (before and after)
 1. Maven profile
 1. User properties
 1. System properties
+
+## Goals
+`pom.yml` allows to configure so called `before` goals and `after` goals. `before` goals are injected by the plugin before the command line goals.
+ Respectively, `after` goals are injected after the command line goals.
+
+Example:
+```yaml
+session:
+  goals:
+    before:
+      - clean
+    after:
+      - sonar:sonar
+```  
+
+So the following maven command line withe the `pom.xml` above
+```shell script
+mvn install
+```
+
+will be the same as you would try to execute the following:
+```shell script
+mvn clean install sonar:sonar
+```
+
 
 ## Project GIT url
 If there is a user property `pom-yaml.scm.git.load-git-url` set to `true` the extension parses git configuration file `.git/config` and extracts
@@ -46,6 +72,11 @@ It sets up `maven.test.skip` maven property to `true`.
 ```yaml
 ---
 session:
+  goals:
+    before:
+      - clean
+    after:
+      - install
   profiles:
     active:
       - maven-surefire-plugin-skip
