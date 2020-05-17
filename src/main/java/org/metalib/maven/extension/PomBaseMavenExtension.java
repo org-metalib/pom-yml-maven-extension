@@ -125,7 +125,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null == targetGoals || null == extensionGoals) {
             return;
         }
-        if (null != extensionGoals.getOnEmpty()) {
+        if (null != extensionGoals.getOnEmpty() && targetGoals.isEmpty()) {
             targetGoals.addAll(extensionGoals.getOnEmpty());
             return;
         }
