@@ -9,7 +9,8 @@
 
 ## Goals
 `pom.yml` allows to configure so called `before` goals and `after` goals. `before` goals are injected by the plugin before the command line goals.
- Respectively, `after` goals are injected after the command line goals.
+ Respectively, `after` goals are injected after the command line goals. If user does not provide any goals in command line
+ the extension injects goals from `on-empty` list. It's helpful to produce an output info about the project.
 
 Example:
 ```yaml
@@ -19,6 +20,8 @@ session:
       - clean
     after:
       - sonar:sonar
+    on-empty:
+      - help:effective-settings
 ```  
 
 So the following maven command line withe the `pom.xml` above
@@ -77,6 +80,8 @@ session:
       - clean
     after:
       - install
+    on-empty:
+      - help:effective-settings
   profiles:
     active:
       - maven-surefire-plugin-skip
