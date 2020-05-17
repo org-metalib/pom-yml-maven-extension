@@ -126,6 +126,10 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null == targetGoals || null == extensionGoals) {
             return;
         }
+        if (null != extensionGoals.getOnEmpty()) {
+            targetGoals.addAll(extensionGoals.getOnEmpty());
+            return;
+        }
         if (null != extensionGoals.getBefore()) {
             val counter = new Counter();
             extensionGoals.getBefore().forEach(goal -> targetGoals.add(counter.value++, goal));
