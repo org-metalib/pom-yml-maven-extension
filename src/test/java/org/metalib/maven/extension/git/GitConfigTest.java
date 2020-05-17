@@ -1,4 +1,4 @@
-package org.metalib.maven.extention.git;
+package org.metalib.maven.extension.git;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

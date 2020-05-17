@@ -1,4 +1,4 @@
-package org.metalib.maven.extention.model;
+package org.metalib.maven.extension.model;
 
 import lombok.Data;
 

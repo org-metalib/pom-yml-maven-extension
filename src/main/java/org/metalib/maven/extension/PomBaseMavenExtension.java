@@ -1,4 +1,4 @@
-package org.metalib.maven.extention;
+package org.metalib.maven.extension;
 
 import static java.lang.String.format;
 
@@ -25,13 +25,13 @@ import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
-import org.metalib.maven.extention.git.GitConfig;
-import org.metalib.maven.extention.model.PomGoals;
-import org.metalib.maven.extention.model.PomProfiles;
-import org.metalib.maven.extention.model.PomRepositoryInfo;
-import org.metalib.maven.extention.model.PomSession;
-import org.metalib.maven.extention.model.PomYaml;
-import org.metalib.maven.extention.model.YmlArtifactRepository;
+import org.metalib.maven.extension.git.GitConfig;
+import org.metalib.maven.extension.model.PomGoals;
+import org.metalib.maven.extension.model.PomProfiles;
+import org.metalib.maven.extension.model.PomRepositoryInfo;
+import org.metalib.maven.extension.model.PomSession;
+import org.metalib.maven.extension.model.PomYaml;
+import org.metalib.maven.extension.model.YmlArtifactRepository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,7 +41,6 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
-import sun.management.counter.Counter;
 
 @Component( role = AbstractMavenLifecycleParticipant.class, hint = "PomBaseMavenExtension")
 public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {

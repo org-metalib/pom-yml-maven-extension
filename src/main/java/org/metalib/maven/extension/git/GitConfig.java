@@ -1,10 +1,8 @@
-package org.metalib.maven.extention.git;
+package org.metalib.maven.extension.git;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.Reader;
-import java.nio.file.Paths;
 
 import lombok.NonNull;
 import lombok.SneakyThrows;

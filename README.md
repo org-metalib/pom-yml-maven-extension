@@ -62,9 +62,9 @@ Example of `.mvn/extensions.xml` configuration file:
 ```xml
 <extensions xmlns="http://maven.apache.org/EXTENSIONS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/EXTENSIONS/1.0.0 http://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
     <extension>
-        <groupId>org.metalib.maven.extention</groupId>
+        <groupId>org.metalib.maven.extension</groupId>
         <artifactId>pom-yml-maven-extension</artifactId>
-        <version>0.0.1</version>
+        <version>0.0.10</version>
     </extension>
 </extensions>
 ```
