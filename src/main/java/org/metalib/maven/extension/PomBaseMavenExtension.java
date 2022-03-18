@@ -1,20 +1,11 @@
 package org.metalib.maven.extension;
 
-import static java.lang.String.format;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -33,14 +24,20 @@ import org.metalib.maven.extension.model.PomSession;
 import org.metalib.maven.extension.model.PomYaml;
 import org.metalib.maven.extension.model.YmlArtifactRepository;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
-import lombok.NonNull;
-import lombok.SneakyThrows;
-import lombok.val;
+import static java.lang.String.format;
 
 @Component( role = AbstractMavenLifecycleParticipant.class, hint = "PomBaseMavenExtension")
 public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
@@ -80,23 +77,23 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     @Override
     public void afterSessionStart(final MavenSession session) throws MavenExecutionException {
         logger.info("pom-yml-maven-extension: session starting ...");
-        val pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getPom).orElse(null);
+        final var pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getPom).orElse(null);
         if (null == pomXmlFile) {
             logger.error("<pom.xml> file info has not been provided.");
             return;
         }
-        val pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
-        val pomYml = loadPomYaml(pomYmlFile);
+        final var pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
+        final var pomYml = loadPomYaml(pomYmlFile);
         PomSession pomSession =  Optional.ofNullable(pomYml).map(PomYaml::getSession).orElse(null);
         if (null == pomSession) {
             if (logger.isErrorEnabled()) {
-                val pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
+                final var pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
                 logger.error(format("<%s> not found.", pomYmlFilePath));
             }
             return;
         }
         if (logger.isInfoEnabled()) {
-            val pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
+            final var pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
             logger.info(format("<%s> found.", pomYmlFilePath));
             if (logger.isDebugEnabled()) {
                 try {
@@ -106,18 +103,18 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                 }
             }
         }
-        val projectBuildingRequest = session.getProjectBuildingRequest();
+        final var projectBuildingRequest = session.getProjectBuildingRequest();
         updatePofileIds(projectBuildingRequest, pomSession);
         updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
         updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
         updateScmGitProperties(session, pomSession);
 
-        val repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
+        final var repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
         if (null != repositories) {
             updateRepositories(projectBuildingRequest, repositories);
         }
-        val requestGoals = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getGoals).orElse(null);
-        val pomYmlGoals = Optional.of(pomYml).map(PomYaml::getSession).map(PomSession::getGoals).orElse(null);
+        final var requestGoals = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getGoals).orElse(null);
+        final var pomYmlGoals = Optional.of(pomYml).map(PomYaml::getSession).map(PomSession::getGoals).orElse(null);
         updateGoals(requestGoals, pomYmlGoals);
     }
 
@@ -130,7 +127,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             return;
         }
         if (null != extensionGoals.getBefore()) {
-            val counter = new Counter();
+            final var counter = new Counter();
             extensionGoals.getBefore().forEach(goal -> targetGoals.add(counter.value++, goal));
         }
         if (null != extensionGoals.getAfter()) {
@@ -143,20 +140,20 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     }
 
     private void updatePofileIds(@NonNull final ProjectBuildingRequest request, final PomSession pomSession) throws MavenExecutionException {
-        val activeProfileIds = new HashSet<>(request.getActiveProfileIds());
-        val activeProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getActive).orElse(null);
+        final var activeProfileIds = new HashSet<>(request.getActiveProfileIds());
+        final var activeProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getActive).orElse(null);
         if (null != activeProfiles) {
-            val inactiveProfileIds = new HashSet<>(request.getInactiveProfileIds());
-            val profileIds = activeProfiles.stream()
+            final var inactiveProfileIds = new HashSet<>(request.getInactiveProfileIds());
+            final var profileIds = activeProfiles.stream()
                     .filter(v -> !inactiveProfileIds.contains(v))
                     .collect(Collectors.toCollection(TreeSet::new));
             profileIds.addAll(activeProfileIds);
             request.setActiveProfileIds(Arrays.asList(profileIds.toArray(new String[0])));
         }
 
-        val inactiveProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getInactive).orElse(null);
+        final var inactiveProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getInactive).orElse(null);
         if (null != inactiveProfiles) {
-            val profileIds = inactiveProfiles.stream()
+            final var profileIds = inactiveProfiles.stream()
                     .filter(v -> !activeProfileIds.contains(v))
                     .collect(Collectors.toCollection(TreeSet::new));
             profileIds.addAll(inactiveProfiles);
@@ -175,8 +172,8 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null == repositories) {
             return Collections.emptyList();
         }
-        val remoteRepositories = null == requestRepositories? new ArrayList<ArtifactRepository>() : requestRepositories;
-        for (val r : repositories) {
+        final var remoteRepositories = null == requestRepositories? new ArrayList<ArtifactRepository>() : requestRepositories;
+        for (final var r : repositories) {
             try {
                 remoteRepositories.add(mavenRepositorySystem.createArtifactRepository(r.getId(), r.getUrl(),
                         DEFAULT_REPOSITORY_LAYOUT_ID, r.getSnapshots(), r.getReleases()));
@@ -189,11 +186,11 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
 
     @SneakyThrows
     private void updateScmGitProperties(final MavenSession session, final PomSession pomSession) {
-        val projectBuildingRequest = session.getProjectBuildingRequest();
+        final var projectBuildingRequest = session.getProjectBuildingRequest();
         if (null == projectBuildingRequest) {
             return;
         }
-        val userProperties = projectBuildingRequest.getUserProperties();
+        final var userProperties = projectBuildingRequest.getUserProperties();
         if (null == userProperties) {
             return;
         }
@@ -201,22 +198,22 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
               TRUE.equals(Optional.of(pomSession).map(PomSession::getUserProperties).map(v -> v.getProperty(POM_BASE_SCM_GIT_LOAD_GIT_URL_PROPERTY)).orElse(null)))) {
             return;
         }
-        val pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(v -> v.getPom()).orElse(null);
+        final var pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(v -> v.getPom()).orElse(null);
         if (null == pomXmlFile) {
             return;
         }
-        val config = new GitConfig(new File(pomXmlFile.getParent(), DOT_GIT));
+        final var config = new GitConfig(new File(pomXmlFile.getParent(), DOT_GIT));
         if (!config.exists()) {
             return;
         }
-        val remoteUrl = config.extractRemoteUrl();
+        final var remoteUrl = config.extractRemoteUrl();
         if (null == remoteUrl) {
             logger.warn("<.git> subdirectory exists but remote git repository has been not found.");
         } else {
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PROPERTY, remoteUrl);
-            val uri = new URI(remoteUrl.trim());
-            val path = extractPathPart(uri.getPath());
-            val name = extractNamePart(uri.getPath());
+            final var uri = new URI(remoteUrl.trim());
+            final var path = extractPathPart(uri.getPath());
+            final var name = extractNamePart(uri.getPath());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PATH_PROPERTY, path.startsWith(SLASH) ? path.substring(1) : path);
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_NAME_PROPERTY,
                     name.endsWith(DOT_GIT)? name.substring(0, name.length()-4) : name);
@@ -224,27 +221,30 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_HOST_PROPERTY, uri.getHost());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_SCHEMA_PROPERTY, uri.getScheme());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PORT_PROPERTY, EMPTY + uri.getPort());
-            userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_USER_PROPERTY, uri.getUserInfo());
+            final var userInfo = uri.getUserInfo();
+            if (null != userInfo) {
+                userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_USER_PROPERTY, userInfo);
+            }
         }
     }
 
     private static String extractPathPart(String fullPath) {
-        val pathIndex = fullPath.lastIndexOf('/');
+        final var pathIndex = fullPath.lastIndexOf('/');
         return 0 < pathIndex?  fullPath.substring(0, pathIndex) : EMPTY;
     }
 
     private static String extractNamePart(String fullPath) {
-        val pathIndex = fullPath.lastIndexOf('/');
+        final var pathIndex = fullPath.lastIndexOf('/');
         return 0 < pathIndex? fullPath.substring(pathIndex+1) : fullPath;
     }
 
     private void updateUserProperties(final Properties userProperties, final PomSession pomSession) {
-        val pomUserProperties = pomSession.getUserProperties();
+        final var pomUserProperties = pomSession.getUserProperties();
         if (null == pomUserProperties) {
             return;
         }
-        val userPropertyNames = userProperties.keySet();
-        for (val name : pomUserProperties.stringPropertyNames()) {
+        final var userPropertyNames = userProperties.keySet();
+        for (final var name : pomUserProperties.stringPropertyNames()) {
             if (userPropertyNames.contains(name)) {
                 logger.info(format("User property <%s> has been set with <%s>", name, userProperties.get(name)));
             } else {
@@ -254,12 +254,12 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     }
 
     private void updateSystemProperties(final Properties systemProperties, final PomSession pomSession) {
-        val pomSystemProperties = pomSession.getSystemProperties();
+        final var pomSystemProperties = pomSession.getSystemProperties();
         if (null == pomSystemProperties) {
             return;
         }
-        val systemPropertyNames = systemProperties.stringPropertyNames();
-        for (val name : pomSystemProperties.stringPropertyNames()) {
+        final var systemPropertyNames = systemProperties.stringPropertyNames();
+        for (final var name : pomSystemProperties.stringPropertyNames()) {
             if (systemPropertyNames.contains(name)) {
                 logger.info(format("System property <%s> has been set with <%s>", name, systemProperties.getProperty(name)));
             } else {
@@ -281,7 +281,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     }
 
     public static String pathToUserHome(String path) {
-        val userDirLength = USER_HOME_PATH.length();
+        final var userDirLength = USER_HOME_PATH.length();
         return userDirLength < path.length() && path.startsWith(USER_HOME_PATH)
                 ? TILDA + SLASH + path.substring(userDirLength+1) : path;
     }

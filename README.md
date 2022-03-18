@@ -44,15 +44,16 @@ mvn clean install -Dpom-yaml.scm.git.load-git-url=true
 if project has `.git/config` file accessible and remote repository is set then you can use a remote URL value in `pom-yaml.scm.git.git-url` in the `pom.xml`. 
 It sets the following properties:
 
-|Name|Description|
-|----|-----------|
-|`pom-yaml.scm.git.git-url`| project scm url |
-|`pom-yaml.scm.git.git-url.path`| project scm url path |
-|`pom-yaml.scm.git.git-url.ext`| project scm url extension (`.git`) |
-|`pom-yaml.scm.git.git-url.host`| project scm url host |
-|`pom-yaml.scm.git.git-url.schema`| project scm url schema |
-|`pom-yaml.scm.git.git-url.port`| project scm url port |
-|`pom-yaml.scm.git.git-url.user`| project scm url user |
+| Name                              | Description                        |
+|-----------------------------------|------------------------------------|
+| `pom-yaml.scm.git.git-url`        | project scm url                    |
+| `pom-yaml.scm.git.git-url.path`   | project scm url path               |
+| `pom-yaml.scm.git.git-url.name`   | project scm url name               |
+| `pom-yaml.scm.git.git-url.ext`    | project scm url extension (`.git`) |
+| `pom-yaml.scm.git.git-url.host`   | project scm url host               |
+| `pom-yaml.scm.git.git-url.schema` | project scm url schema             |
+| `pom-yaml.scm.git.git-url.port`   | project scm url port               |
+| `pom-yaml.scm.git.git-url.user`   | project scm url user               |
 
 ## Installation
 Follow maven guidance to setup maven extension as described in [Maven Extension Demo Study](http://maven.apache.org/studies/extension-demo/).
