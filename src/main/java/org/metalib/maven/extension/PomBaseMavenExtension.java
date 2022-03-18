@@ -210,8 +210,8 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null == remoteUrl) {
             logger.warn("<.git> subdirectory exists but remote git repository has been not found.");
         } else {
-            userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PROPERTY, remoteUrl);
             final var uri = new URI(remoteUrl.trim());
+            userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PROPERTY, uri.toASCIIString());
             final var path = extractPathPart(uri.getPath());
             final var name = extractNamePart(uri.getPath());
             userProperties.setProperty(POM_BASE_SCM_GIT_GIT_URL_PATH_PROPERTY, path.startsWith(SLASH) ? path.substring(1) : path);
