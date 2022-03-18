@@ -4,7 +4,7 @@
 
     <groupId>org.metalib.maven.extension</groupId>
     <artifactId>pom-yml-maven-extension</artifactId>
-    <version>0.0.12</version>
+    <version>0.0.12-SNAPSHOT</version>
 
     <name>${project.artifactId}</name>
     <description>pom.yml maven extension</description>
@@ -221,6 +221,6 @@
     <scm>
         <connection>scm:git:git@github.com:org-metalib/pom-yml-maven-extension.git</connection>
         <url>https://github.com/org-metalib/pom-yml-maven-extension</url>
-        <tag>0.0.12</tag>
+        <tag>HEAD</tag>
     </scm>
 </project>
