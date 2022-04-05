@@ -12,11 +12,16 @@ import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.bridge.MavenRepositorySystem;
 import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.DeploymentRepository;
+import org.apache.maven.model.DistributionManagement;
+import org.apache.maven.model.Relocation;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
 import org.metalib.maven.extension.git.GitConfig;
+import org.metalib.maven.extension.model.Distribution;
 import org.metalib.maven.extension.model.PomGoals;
 import org.metalib.maven.extension.model.PomProfiles;
 import org.metalib.maven.extension.model.PomRepositoryInfo;
@@ -74,6 +79,22 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     @Requirement
     MavenRepositorySystem mavenRepositorySystem;
 
+    public void afterProjectsRead( MavenSession session ) throws MavenExecutionException {
+        logger.info("pom-yml-maven-extension: project read ...");
+        final var pomXmlFile = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getPom).orElse(null);
+        if (null == pomXmlFile) {
+            logger.error("<pom.xml> file info has not been provided.");
+            return;
+        }
+        final var projectBuildingRequest = session.getProjectBuildingRequest();
+        final var pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
+        final var pomYml = loadPomYaml(pomYmlFile);
+        final var project = session.getCurrentProject();
+        if (null != project) {
+            Optional.of(pomYml).map(PomYaml::getDistribution).ifPresent(v -> updateDistribution(project, v));
+        }
+    }
+
     @Override
     public void afterSessionStart(final MavenSession session) throws MavenExecutionException {
         logger.info("pom-yml-maven-extension: session starting ...");
@@ -109,10 +130,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
         updateScmGitProperties(session, pomSession);
 
-        final var repositories = Optional.of(pomYml).map(PomYaml::getRepositories).orElse(null);
-        if (null != repositories) {
-            updateRepositories(projectBuildingRequest, repositories);
-        }
+        Optional.of(pomYml).map(PomYaml::getRepositories).ifPresent(v -> updateRepositories(projectBuildingRequest, v));
         final var requestGoals = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getGoals).orElse(null);
         final var pomYmlGoals = Optional.of(pomYml).map(PomYaml::getSession).map(PomSession::getGoals).orElse(null);
         updateGoals(requestGoals, pomYmlGoals);
@@ -161,8 +179,36 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         }
     }
 
-    private void updateRepositories(@NonNull final ProjectBuildingRequest request,
-            final PomRepositoryInfo repositories) throws MavenExecutionException {
+    @SneakyThrows
+    private void updateDistribution(@NonNull final MavenProject project, @NonNull final Distribution distribution) {
+        var target = project.getDistributionManagement();
+        if (null == target) {
+            target = new DistributionManagement();
+            project.setDistributionManagement(target);
+        }
+        if (null == target.getDownloadUrl()) {
+            target.setDownloadUrl(distribution.getDownloadUrl());
+        }
+        final var relocationSource = distribution.getRelocation();
+        if (null != relocationSource && null == target.getRelocation()) {
+            target.setRelocation(relocationSource);
+        }
+        final var repositorySource = distribution.getRepository();
+        if (null != repositorySource && null == target.getRepository()) {
+            target.setRepository(repositorySource);
+        }
+        final var snapshotSource = distribution.getSnapshot();
+        if (null != snapshotSource && null == target.getSnapshotRepository()) {
+            target.setSnapshotRepository(repositorySource);
+        }
+        final var siteSource = distribution.getSite();
+        if (null != siteSource && null == target.getSite()) {
+            target.setSite(siteSource);
+        }
+    }
+
+    @SneakyThrows
+    private void updateRepositories(@NonNull final ProjectBuildingRequest request, final PomRepositoryInfo repositories) {
         request.setRemoteRepositories(upsert(request.getRemoteRepositories(), repositories.getArtifacts()));
         request.setPluginArtifactRepositories(upsert(request.getPluginArtifactRepositories(), repositories.getPlugins()));
     }

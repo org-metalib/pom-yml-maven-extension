@@ -65,7 +65,7 @@ Example of `.mvn/extensions.xml` configuration file:
     <extension>
         <groupId>org.metalib.maven.extension</groupId>
         <artifactId>pom-yml-maven-extension</artifactId>
-        <version>0.0.10</version>
+        <version>0.0.14</version>
     </extension>
 </extensions>
 ```
@@ -93,6 +93,77 @@ session:
     maven.test.skip: true
   system-properties:
     checksum: 0000
+repositories:
+  artifacts:
+    - id: central
+      name: Central Repository
+      url: https://repo1.maven.org/maven2
+      releases:
+        updatePolicy: never
+        checksumPolicy: fail
+      snapshots:
+        updatePolicy: never
+        checksumPolicy: fail
+  plugins:
+    - id: central
+      name: Central Repository
+      url: https://repo1.maven.org/maven2
+      releases:
+        updatePolicy: never
+        checksumPolicy: fail
+      snapshots:
+        updatePolicy: never
+        checksumPolicy: fail
+distribution:
+  downloadUrl: https://repo.url
+  relocation:
+    groupId: org.metalib.maven.extension.test
+    artifactId: pom-yml-maven-extension-it
+    version: 0.1.1
+    message: relocation message
+  repository:
+    id: central
+    name: Central Repo
+    url: https://repo.url
+    layout: default
+    uniqueVersion: true
+  snapshot:
+    id: central-snapshot
+    name: Central Snapshot Repo
+    url: https://repo.url
+    layout: default
+    uniqueVersion: true
+  site:
+    id: default
+    name: Repository Site
+    url: https://site.url
+```
+
+```xml
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <name>Central Repo</name>
+      <url>https://repo.url</url>
+    </repository>
+    <snapshotRepository>
+      <id>central</id>
+      <name>Central Repo</name>
+      <url>https://repo.url</url>
+    </snapshotRepository>
+    <site>
+      <id>default</id>
+      <name>Repository Site</name>
+      <url>https://site.url</url>
+    </site>
+    <downloadUrl>https://repo.url</downloadUrl>
+    <relocation>
+      <groupId>org.metalib.maven.extension.test</groupId>
+      <artifactId>pom-yml-maven-extension-it</artifactId>
+      <version>0.1.1</version>
+      <message>relocation message</message>
+    </relocation>
+  </distributionManagement>
 ```
 
 The example above is equivalent to the following command line maven call:
