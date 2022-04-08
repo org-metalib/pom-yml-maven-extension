@@ -90,7 +90,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         final var pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
         final var pomYml = loadPomYaml(pomYmlFile);
         final var project = session.getCurrentProject();
-        if (null != project) {
+        if (null != project && null != pomYml) {
             Optional.of(pomYml).map(PomYaml::getDistribution).ifPresent(v -> updateDistribution(project, v));
         }
     }
