@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <lombok.version>1.18.22</lombok.version>
-        <jackson.version>2.11.0</jackson.version>
+        <jackson.version>2.12.6</jackson.version>
         <maven.version>3.6.3</maven.version>
         <plexus-component.version>2.1.0</plexus-component.version>
         <junit.version>4.13.2</junit.version>
