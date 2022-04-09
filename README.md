@@ -65,7 +65,7 @@ Example of `.mvn/extensions.xml` configuration file:
     <extension>
         <groupId>org.metalib.maven.extension</groupId>
         <artifactId>pom-yml-maven-extension</artifactId>
-        <version>0.0.14</version>
+        <version>0.0.17</version>
     </extension>
 </extensions>
 ```
