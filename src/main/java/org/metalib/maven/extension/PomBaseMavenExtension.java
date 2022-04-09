@@ -12,9 +12,7 @@ import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.bridge.MavenRepositorySystem;
 import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.DeploymentRepository;
 import org.apache.maven.model.DistributionManagement;
-import org.apache.maven.model.Relocation;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
@@ -50,6 +48,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
     static final String USER_HOME = "user.home";
     static final String USER_HOME_PATH = System.getProperty(USER_HOME);
     static final String POM_YML = "pom.yml";
+    static final String POM_XML = "pom.xml";
 
     static final String DOT = ".";
     static final String TILDA = "~";
@@ -86,13 +85,31 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             logger.error("<pom.xml> file info has not been provided.");
             return;
         }
-        final var projectBuildingRequest = session.getProjectBuildingRequest();
-        final var pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
+        final var pomYmlFile = pomYmlFile(pomXmlFile);
+        if (null == pomYmlFile) {
+            return;
+        }
         final var pomYml = loadPomYaml(pomYmlFile);
         final var project = session.getCurrentProject();
-        if (null != project && null != pomYml) {
+        if (null != project) {
             Optional.of(pomYml).map(PomYaml::getDistribution).ifPresent(v -> updateDistribution(project, v));
         }
+    }
+
+    static File pomYmlFile(File pomXmlFile) {
+        if (null == pomXmlFile || !pomXmlFile.isFile()) {
+            return null;
+        }
+        var dir = pomXmlFile.getParentFile();
+        do {
+            final var pomYmlFile = new File(dir, POM_YML);
+            if (pomYmlFile.isFile()) {
+                return pomYmlFile;
+            }
+            dir = dir.getParentFile();
+            // TODO: It's better to target parent pom location rather than to rely on dir hierarchy
+        } while (null != dir && new File(dir, POM_XML).isFile());
+        return null;
     }
 
     @Override
@@ -103,15 +120,29 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             logger.error("<pom.xml> file info has not been provided.");
             return;
         }
-        final var pomYmlFile = new File(pomXmlFile.getParent(), POM_YML);
+        final var pomYmlFile = pomYmlFile(pomXmlFile);
+        if (null == pomYmlFile) {
+            return;
+        }
         final var pomYml = loadPomYaml(pomYmlFile);
-        PomSession pomSession =  Optional.ofNullable(pomYml).map(PomYaml::getSession).orElse(null);
+        if (null == pomYml) {
+            return;
+        }
+        var pomSession =  Optional.of(pomYml).map(PomYaml::getSession).orElse(null);
         if (null == pomSession) {
             if (logger.isErrorEnabled()) {
                 final var pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
                 logger.error(format("<%s> not found.", pomYmlFilePath));
             }
             return;
+        } else {
+            final var projectBuildingRequest = session.getProjectBuildingRequest();
+            updatePofileIds(projectBuildingRequest, pomSession);
+            updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
+            updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
+            updateScmGitProperties(session, pomSession);
+
+            Optional.of(pomYml).map(PomYaml::getRepositories).ifPresent(v -> updateRepositories(projectBuildingRequest, v));
         }
         if (logger.isInfoEnabled()) {
             final var pomYmlFilePath = pathToUserHome(pomYmlFile.getAbsolutePath());
@@ -124,13 +155,6 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                 }
             }
         }
-        final var projectBuildingRequest = session.getProjectBuildingRequest();
-        updatePofileIds(projectBuildingRequest, pomSession);
-        updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
-        updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
-        updateScmGitProperties(session, pomSession);
-
-        Optional.of(pomYml).map(PomYaml::getRepositories).ifPresent(v -> updateRepositories(projectBuildingRequest, v));
         final var requestGoals = Optional.of(session).map(MavenSession::getRequest).map(MavenExecutionRequest::getGoals).orElse(null);
         final var pomYmlGoals = Optional.of(pomYml).map(PomYaml::getSession).map(PomSession::getGoals).orElse(null);
         updateGoals(requestGoals, pomYmlGoals);
