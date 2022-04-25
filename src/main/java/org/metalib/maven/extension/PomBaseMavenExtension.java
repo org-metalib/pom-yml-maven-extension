@@ -13,6 +13,7 @@ import org.apache.maven.bridge.MavenRepositorySystem;
 import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.DistributionManagement;
+import org.apache.maven.model.interpolation.MavenBuildTimestamp;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
@@ -26,6 +27,8 @@ import org.metalib.maven.extension.model.PomRepositoryInfo;
 import org.metalib.maven.extension.model.PomSession;
 import org.metalib.maven.extension.model.PomYaml;
 import org.metalib.maven.extension.model.YmlArtifactRepository;
+import org.metalib.maven.extension.property.BeanPropertyMap;
+import org.metalib.maven.extension.property.PropertyResolver;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,14 +36,18 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.apache.maven.model.interpolation.MavenBuildTimestamp.BUILD_TIMESTAMP_FORMAT_PROPERTY;
 
 @Component( role = AbstractMavenLifecycleParticipant.class, hint = "PomBaseMavenExtension")
 public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
@@ -90,9 +97,101 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             return;
         }
         final var pomYml = loadPomYaml(pomYmlFile);
+        Optional.ofNullable(pomYml).map(PomYaml::getDistribution).ifPresent(v -> updateDistribution(session, v));
+        updateRepositories(session);
+
         final var project = session.getCurrentProject();
         if (null != project) {
-            Optional.of(pomYml).map(PomYaml::getDistribution).ifPresent(v -> updateDistribution(project, v));
+            final var projectProperties = project.getProperties();
+            new PropertyResolver().resolve(propertyRequest(session)).forEach((k,v) -> {
+                if (!projectProperties.contains(k)) {
+                    projectProperties.put(k,v);
+                }
+            });
+        }
+        return;
+    }
+
+    private void updateRepositories(@NonNull final MavenSession session) {
+        final var project = session.getCurrentProject();
+        if (null == project) {
+            return;
+        }
+        final var projectRepoSet = new HashSet<String>();
+        final var projectRepositories = project.getRepositories();
+        return;
+    }
+
+    static Map<String,String> propertyRequest(MavenSession session) {
+        final var result = new HashMap<String,String>();
+        Optional.of(session).map(MavenSession::getCurrentProject).ifPresent(v -> {
+            final var baseDir = v.getBasedir();
+            if (null != baseDir) {
+                result.put("project.basedir", baseDir.getAbsolutePath());
+                result.put("project.baseUri", baseDir.getAbsoluteFile().toPath().toUri().toASCIIString());
+            }
+            result.putAll(BeanPropertyMap.resolve("project", v.getModel()));
+        });
+        final var mavenExecutionRequest = Optional.of(session).map(MavenSession::getRequest);
+        mavenExecutionRequest.map(MavenExecutionRequest::getSystemProperties)
+                .ifPresent(v -> v.forEach((k,vv) -> result.put(k.toString(),vv.toString())));
+        mavenExecutionRequest.map(MavenExecutionRequest::getUserProperties)
+                .ifPresent(v -> v.forEach((k,vv) -> result.put(k.toString(),vv.toString())));
+        final var projectBuildingRequest = Optional.of(session).map(MavenSession::getProjectBuildingRequest);
+        projectBuildingRequest.map(ProjectBuildingRequest::getSystemProperties)
+                .ifPresent(v -> v.forEach((k,vv) -> result.put(k.toString(),vv.toString())));
+        projectBuildingRequest.map(ProjectBuildingRequest::getUserProperties)
+                .ifPresent(v -> v.forEach((k,vv) -> result.put(k.toString(),vv.toString())));
+        mavenExecutionRequest.ifPresent(v -> {
+            final var timestampFormat = result.get(BUILD_TIMESTAMP_FORMAT_PROPERTY);
+            final var startTime = v.getStartTime();
+            final MavenBuildTimestamp buildStartTime;
+            if (null == startTime && null == timestampFormat) {
+                buildStartTime = new MavenBuildTimestamp();
+            } else if (null == startTime) {
+                buildStartTime = new MavenBuildTimestamp(new Date(), timestampFormat);
+            } else if (null == timestampFormat) {
+                buildStartTime = new MavenBuildTimestamp(startTime);
+            } else {
+                buildStartTime = new MavenBuildTimestamp(startTime, timestampFormat);
+            }
+            result.put("maven.build.timestamp", buildStartTime.formattedTimestamp());
+        });
+        Optional.of(session).map(MavenSession::getCurrentProject).map(MavenProject::getProperties).ifPresent(v -> {
+            v.forEach((kk,vv) -> result.put(kk.toString(),vv.toString()));
+        });
+        return result;
+    }
+
+    @SneakyThrows
+    private void updateDistribution(@NonNull MavenSession session, @NonNull final Distribution distribution) {
+        final var project = session.getCurrentProject();
+        if (null == project) {
+            return;
+        }
+        var target = project.getDistributionManagement();
+        if (null == target) {
+            target = new DistributionManagement();
+            project.setDistributionManagement(target);
+        }
+        if (null == target.getDownloadUrl()) {
+            target.setDownloadUrl(distribution.getDownloadUrl());
+        }
+        final var relocationSource = distribution.getRelocation();
+        if (null != relocationSource && null == target.getRelocation()) {
+            target.setRelocation(relocationSource);
+        }
+        final var repositorySource = distribution.getRepository();
+        if (null != repositorySource && null == target.getRepository()) {
+            target.setRepository(repositorySource);
+        }
+        final var snapshotSource = distribution.getSnapshot();
+        if (null != snapshotSource && null == target.getSnapshotRepository()) {
+            target.setSnapshotRepository(repositorySource);
+        }
+        final var siteSource = distribution.getSite();
+        if (null != siteSource && null == target.getSite()) {
+            target.setSite(siteSource);
         }
     }
 
@@ -137,7 +236,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
             return;
         } else {
             final var projectBuildingRequest = session.getProjectBuildingRequest();
-            updatePofileIds(projectBuildingRequest, pomSession);
+            updateProfileIds(projectBuildingRequest, pomSession);
             updateUserProperties(projectBuildingRequest.getUserProperties(), pomSession);
             updateSystemProperties(projectBuildingRequest.getSystemProperties(), pomSession);
             updateScmGitProperties(session, pomSession);
@@ -181,7 +280,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         int value;
     }
 
-    private void updatePofileIds(@NonNull final ProjectBuildingRequest request, final PomSession pomSession) throws MavenExecutionException {
+    private void updateProfileIds(@NonNull final ProjectBuildingRequest request, final PomSession pomSession) throws MavenExecutionException {
         final var activeProfileIds = new HashSet<>(request.getActiveProfileIds());
         final var activeProfiles = Optional.of(pomSession).map(PomSession::getProfiles).map(PomProfiles::getActive).orElse(null);
         if (null != activeProfiles) {
@@ -200,34 +299,6 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                     .collect(Collectors.toCollection(TreeSet::new));
             profileIds.addAll(inactiveProfiles);
             request.setInactiveProfileIds(Arrays.asList(profileIds.toArray(new String[0])));
-        }
-    }
-
-    @SneakyThrows
-    private void updateDistribution(@NonNull final MavenProject project, @NonNull final Distribution distribution) {
-        var target = project.getDistributionManagement();
-        if (null == target) {
-            target = new DistributionManagement();
-            project.setDistributionManagement(target);
-        }
-        if (null == target.getDownloadUrl()) {
-            target.setDownloadUrl(distribution.getDownloadUrl());
-        }
-        final var relocationSource = distribution.getRelocation();
-        if (null != relocationSource && null == target.getRelocation()) {
-            target.setRelocation(relocationSource);
-        }
-        final var repositorySource = distribution.getRepository();
-        if (null != repositorySource && null == target.getRepository()) {
-            target.setRepository(repositorySource);
-        }
-        final var snapshotSource = distribution.getSnapshot();
-        if (null != snapshotSource && null == target.getSnapshotRepository()) {
-            target.setSnapshotRepository(repositorySource);
-        }
-        final var siteSource = distribution.getSite();
-        if (null != siteSource && null == target.getSite()) {
-            target.setSite(siteSource);
         }
     }
 
