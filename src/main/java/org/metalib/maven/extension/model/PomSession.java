@@ -1,5 +1,6 @@
 package org.metalib.maven.extension.model;
 
+import java.util.List;
 import java.util.Properties;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,4 +21,6 @@ public class PomSession {
     private Properties userProperties;
     @JsonProperty("system-properties")
     private Properties systemProperties;
+    @JsonProperty("user-property-sources")
+    private List<PomPropertySource> userPropertySources;
 }

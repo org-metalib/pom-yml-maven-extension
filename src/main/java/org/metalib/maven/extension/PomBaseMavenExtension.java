@@ -23,6 +23,7 @@ import org.metalib.maven.extension.git.GitConfig;
 import org.metalib.maven.extension.model.Distribution;
 import org.metalib.maven.extension.model.PomGoals;
 import org.metalib.maven.extension.model.PomProfiles;
+import org.metalib.maven.extension.model.PomPropertySource;
 import org.metalib.maven.extension.model.PomRepositoryInfo;
 import org.metalib.maven.extension.model.PomSession;
 import org.metalib.maven.extension.model.PomYaml;
@@ -31,7 +32,10 @@ import org.metalib.maven.extension.property.BeanPropertyMap;
 import org.metalib.maven.extension.property.PropertyResolver;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -103,13 +107,78 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         final var project = session.getCurrentProject();
         if (null != project) {
             final var projectProperties = project.getProperties();
-            new PropertyResolver().resolve(propertyRequest(session)).forEach((k,v) -> {
+            final var properties = propertyRequest(session);
+            loadFromPropertySources(pomYml).forEach((k,v) -> {
+                final var value = properties.get(k);
+                if (null == value) {
+                    properties.put(k.toString(),v.toString());
+                } else {
+                    logger.info(format("Skipping (<%s>, <%s>) as value <%s> is already defined for the kye <%s>", k, v, value, k));
+                }
+            });
+            new PropertyResolver().resolve(properties).forEach((k,v) -> {
                 if (!projectProperties.contains(k)) {
                     projectProperties.put(k,v);
                 }
             });
         }
         return;
+    }
+
+    private Properties loadFromPropertySources(PomYaml pomYml) throws MavenExecutionException {
+        final var result = new Properties();
+        final var sources = Optional.ofNullable(pomYml).map(PomYaml::getSession).map(PomSession::getUserPropertySources);
+        if (sources.isPresent()) {
+            for (final var source : sources.get()) {
+                final var path = source.getPath();
+                final var resources = source.getResources();
+                if (null == path || path.isBlank() || null == source.getResources() || resources.isEmpty()) {
+                    continue;
+                }
+                final var pathDir = new File(path);
+                if (pathDir.isDirectory()) {
+                    for (final var resource : resources) {
+                        processResource(result, pathDir, resource);
+                    }
+                } else {
+                    logger.info(format("file path <%s> is not a directory.", path));
+                }
+            }
+        }
+        return result;
+    }
+
+    private void processResource(final Properties target, final File pathDir, final PomPropertySource.Resource resource) throws MavenExecutionException {
+        final var resourceName = resource.getResource();
+        if (null == resourceName || resourceName.isBlank()) {
+            return;
+        }
+        final var resourcePrefix = resource.getPrefix();
+        final var prefix = null == resourcePrefix
+                ? ""
+                : resourcePrefix.endsWith(".") // NOSONAR
+                ? resourcePrefix
+                : resourcePrefix + ".";
+        final var resourceFile = new File(pathDir, resourceName);
+        if (!resourceFile.isFile()) {
+            logger.info(format("Resource file <%s> is not found, skipping ...", resourceFile.getAbsolutePath()));
+            return;
+        }
+        final var properties = new Properties();
+        try (final var resourceInput = new FileInputStream(resourceFile)) {
+            properties.load(resourceInput);
+        } catch (IOException e) {
+            throw new MavenExecutionException(format("Resource file <%s> reading exception", resourceFile.getAbsolutePath()), e);
+        }
+        properties.forEach((k,v) ->{
+            final var definedValue = target.get(k);
+            if (null != definedValue) {
+                logger.info(format("Skipping key (<%s>, <%s>) from source <%s> as it's defined with value <%s>.",
+                        k, v, resourceFile.getAbsolutePath(), definedValue));
+            } else {
+                target.put(prefix + k,v);
+            }
+        });
     }
 
     private void updateRepositories(@NonNull final MavenSession session) {
