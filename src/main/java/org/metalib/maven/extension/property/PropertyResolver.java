@@ -37,21 +37,21 @@ public class PropertyResolver {
             }
             final var name = value.substring(j+2, k);
             if (name.isBlank()) {
-                resolved.append(value.substring(j, k));
+                resolved.append(value, j, k);
             } else {
                 final var val0 = target.get(name);
                 if (null == val0) {
                     final var propertyValue = properties.get(name);
                     if (null == propertyValue) {
-                        resolved.append(value.substring(j, k+1));
+                        resolved.append(value, j, k+1);
                     } else {
                         stack.add(key);
                         resolve(target, properties, name, propertyValue, stack);
                         stack.remove(key);
-                        resolved.append(target.get(name));
+                        resolved.append(value, i, j).append(target.get(name));
                     }
                 } else {
-                    resolved.append(value.substring(i,j)).append(val0);
+                    resolved.append(value, i, j).append(val0);
                 }
             }
             i = k+1;

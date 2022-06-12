@@ -18,6 +18,81 @@ public class PropertyResolverTest extends TestCase {
     static final PropertyResolver resolver = new PropertyResolver();
 
     @Test
+    public void test6() {
+        final var input = new HashMap<String,String>();
+        input.put("n1","8888");
+        input.put("n2","9999");
+        input.put("n1 and n2","${n1} and ${n2}.");
+        input.put("n1:n2","n1:n2 -> ${n1}:${n2}");
+        input.put("n1n2","n1n2 -> ${n1}${n2}");
+        final var r0 = resolver.resolve(input);
+        assertNotNull(r0);
+        assertEquals("8888 and 9999.", r0.get("n1 and n2"));
+        assertEquals("n1:n2 -> 8888:9999", r0.get("n1:n2"));
+        assertEquals("n1n2 -> 88889999", r0.get("n1n2"));
+    }
+
+    @Test
+    public void test5() {
+        final var input = new HashMap<String,String>();
+        input.put("n1","8888");
+        input.put("n2","9999");
+        input.put("n1 and n2","${n1} and ${n2} and the end.");
+        input.put("n1:n2","n1:n2 -> ${n1}:${n2}");
+        input.put("n1n2","n1n2 -> ${n1}${n2}");
+        final var r0 = resolver.resolve(input);
+        assertNotNull(r0);
+        assertEquals("8888 and 9999 and the end.", r0.get("n1 and n2"));
+        assertEquals("n1:n2 -> 8888:9999", r0.get("n1:n2"));
+        assertEquals("n1n2 -> 88889999", r0.get("n1n2"));
+    }
+
+    @Test
+    public void test4() {
+        final var input = new HashMap<String,String>();
+        input.put("n1","8888");
+        input.put("n2","9999");
+        input.put("n1 and n2","n1 and n2 -> ${n1} and ${n2} and the end.");
+        input.put("n1:n2","n1:n2 -> ${n1}:${n2}");
+        input.put("n1n2","n1n2 -> ${n1}${n2}");
+        final var r0 = resolver.resolve(input);
+        assertNotNull(r0);
+        assertEquals("n1 and n2 -> 8888 and 9999 and the end.", r0.get("n1 and n2"));
+        assertEquals("n1:n2 -> 8888:9999", r0.get("n1:n2"));
+        assertEquals("n1n2 -> 88889999", r0.get("n1n2"));
+    }
+
+    @Test
+    public void test3() {
+        final var input = new HashMap<String,String>();
+        input.put("n1","8888");
+        input.put("n2","9999");
+        input.put("n1 and n2","n1 and n2 -> ${n1} and ${n2}.");
+        input.put("n1:n2","n1:n2 -> ${n1}:${n2}");
+        input.put("n1n2","n1n2 -> ${n1}${n2}");
+        final var r0 = resolver.resolve(input);
+        assertNotNull(r0);
+        assertEquals("n1 and n2 -> 8888 and 9999.", r0.get("n1 and n2"));
+        assertEquals("n1:n2 -> 8888:9999", r0.get("n1:n2"));
+        assertEquals("n1n2 -> 88889999", r0.get("n1n2"));
+    }
+
+    @Test
+    public void test2() {
+        final var input = new HashMap<String,String>();
+        input.put("n1","8888");
+        input.put("n2","9999");
+        input.put("n1 and n2","n1 and n2 -> ${n1} and ${n2}");
+        input.put("n1:n2","n1:n2 -> ${n1}:${n2}");
+        input.put("n1n2","n1n2 -> ${n1}${n2}");
+        final var r0 = resolver.resolve(input);
+        assertNotNull(r0);
+        assertEquals("n1 and n2 -> 8888 and 9999", r0.get("n1 and n2"));
+        assertEquals("n1:n2 -> 8888:9999", r0.get("n1:n2"));
+        assertEquals("n1n2 -> 88889999", r0.get("n1n2"));
+    }
+
+    @Test
     public void test1() {
         final var input = new HashMap<String,String>();
         input.put("n1","8888");
