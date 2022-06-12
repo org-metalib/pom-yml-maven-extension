@@ -7,6 +7,7 @@ import java.io.FileReader;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.apache.commons.io.FilenameUtils;
 
 public class GitConfig {
 
@@ -15,7 +16,7 @@ public class GitConfig {
     final File gitFile;
 
     public GitConfig(@NonNull File gitDir) {
-        gitFile = new File(gitDir, CONFIG);
+        gitFile = new File(gitDir, FilenameUtils.getName(CONFIG));
     }
 
     public boolean exists() {

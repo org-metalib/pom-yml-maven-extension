@@ -6,6 +6,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import lombok.NonNull;
 import lombok.SneakyThrows;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -157,7 +158,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
                 : resourcePrefix.endsWith(".") // NOSONAR
                 ? resourcePrefix
                 : resourcePrefix + ".";
-        final var resourceFile = new File(pathDir, resourceName);
+        final var resourceFile = new File(pathDir, FilenameUtils.getName(resourceName));
         if (!resourceFile.isFile()) {
             logger.info(format("Resource file <%s> is not found, skipping ...", resourceFile.getAbsolutePath()));
             return;
@@ -268,13 +269,13 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         }
         var dir = pomXmlFile.getParentFile();
         do {
-            final var pomYmlFile = new File(dir, POM_YML);
+            final var pomYmlFile = new File(dir, FilenameUtils.getName(POM_YML));
             if (pomYmlFile.isFile()) {
                 return pomYmlFile;
             }
             dir = dir.getParentFile();
             // TODO: It's better to target parent pom location rather than to rely on dir hierarchy
-        } while (null != dir && new File(dir, POM_XML).isFile());
+        } while (null != dir && new File(dir, FilenameUtils.getName(POM_XML)).isFile());
         return null;
     }
 
@@ -410,7 +411,7 @@ public class PomBaseMavenExtension extends AbstractMavenLifecycleParticipant {
         if (null == pomXmlFile) {
             return;
         }
-        final var config = new GitConfig(new File(pomXmlFile.getParent(), DOT_GIT));
+        final var config = new GitConfig(new File(pomXmlFile.getParent(), FilenameUtils.getName(DOT_GIT)));
         if (!config.exists()) {
             return;
         }

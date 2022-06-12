@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SuppressWarnings("SameNameButDifferent")
 @Builder(toBuilder = true)
 public class PomRepositoryInfo {
     List<YmlArtifactRepository> artifacts;
